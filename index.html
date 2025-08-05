@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Word</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 90%;
+            width: 600px; /* Max width for larger screens */
+        }
+
+        h1 {
+            color: #2d3748; /* Darker gray for heading */
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        #game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #coins-display {
+            color: #48bb78; /* Green for coins */
+        }
+
+        #tries-display {
+            color: #e53e3e; /* Red for tries */
+        }
+
+        #word-display {
+            display: flex;
+            justify-content: center;
+            gap: 8px; /* Space between letter inputs */
+            margin-bottom: 30px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+
+        .letter-input {
+            width: 50px; /* Fixed width for each input */
+            height: 50px; /* Fixed height for each input */
+            font-size: 2rem;
+            text-align: center;
+            border: 2px solid #cbd5e0; /* Light gray border */
+            border-radius: 8px;
+            background-color: #edf2f7; /* Lighter background for inputs */
+            color: #2d3748; /* Default text color (black-ish) */
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+            outline: none; /* Remove default outline */
+        }
+
+        .letter-input:focus {
+            border-color: #4299e1; /* Blue border on focus */
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* Blue shadow on focus */
+        }
+
+        /* Style for correctly guessed letters (user input or hint) */
+        .letter-input.correct {
+            background-color: #d4edda; /* Light green background */
+            color: #155724; /* Dark green text */
+            border-color: #28a745; /* Green border */
+            cursor: not-allowed;
+        }
+
+        /* Style for initially revealed letters (default muted blue-gray, disabled) */
+        .letter-input:disabled:not(.correct) {
+            opacity: 1;
+            background-color: #e2e8f0; /* Slightly darker background for disabled */
+            color: #5a67d8; /* Muted blue-gray color for default letters */
+            cursor: not-allowed;
+        }
+
+        /* Style for hint-revealed letters (golden outline) */
+        .letter-input.hint-revealed {
+            outline: 3px solid #ffd700; /* Golden outline */
+            outline-offset: 2px; /* Space between border and outline */
+        }
+
+        #message {
+            margin-top: 20px; /* Adjusted margin to fit above word-display */
+            margin-bottom: 15px; /* Added margin to separate from word-display */
+            font-size: 1.2rem;
+            color: #e53e3e; /* Red for error messages */
+            min-height: 24px; /* Ensure space even when empty */
+        }
+
+        .won-message {
+            color: #38a169 !important; /* Green for win message */
+            font-weight: bold;
+        }
+
+        .lose-message {
+            color: #e53e3e !important; /* Red for lose message */
+            font-weight: bold;
+        }
+
+        .hint-message {
+            color: #f6ad55 !important; /* Orange for hint message */
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .game-button {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #check-guess-button {
+            background-color: #4299e1; /* Blue button */
+        }
+        #check-guess-button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+        }
+        #check-guess-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        #hint-button {
+            background-color: #48bb78; /* Green for hint button */
+        }
+        #hint-button:hover {
+            background-color: #38a169; /* Darker green on hover */
+            transform: translateY(-2px);
+        }
+        #hint-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        #hint-button:disabled {
+            background-color: #a0aec0; /* Gray when disabled */
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #new-game-button {
+            background-color: #63b3ed; /* Lighter blue for new game */
+            margin-top: 20px; /* Separate from other buttons */
+        }
+        #new-game-button:hover {
+            background-color: #4299e1;
+            transform: translateY(-2px);
+        }
+        #new-game-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Guess the Word</h1>
+        <div id="game-stats">
+            <div id="coins-display">🪙 0</div>
+            <div id="tries-display">Tries Left: 0</div>
+        </div>
+        <!-- Hint message moved above word-display -->
+        <div id="message"></div>
+        <div id="word-display">
+            <!-- Letter inputs will be dynamically inserted here -->
+        </div>
+        <div class="button-group">
+            <button id="check-guess-button" class="game-button">Check Guess</button>
+            <button id="hint-button" class="game-button">Hint (2🪙)</button>
+        </div>
+        <button id="new-game-button" class="game-button">New Game (Cost: 1🪙)</button>
+    </div>
+
+    <script>
+        // Array of words for the game
+        const arr = [
+            "apple", "banana", "orange", "strawberry", "grape", "watermelon", "pineapple", "mango", "kiwi", "blueberry", "raspberry", "blackberry", "peach", "pear", "plum", "lemon", "lime", "coconut", "avocado", "apricot", "cherry", "pomegranate", "fig", "guava", "lychee", "papaya", "dragonfruit", "passionfruit", "tangerine", "cranberry", "acorn", "bacon", "cabbage", "daffodil", "eagle", "feather", "garden", "hammer", "igloo", "jungle", "kettle", "ladder", "mountain", "notebook", "octopus", "pillow", "quiver", "rainbow", "saddle", "table", "umbrella", "volcano", "whisper", "xylophone", "yacht", "zipper", "airplane", "bicycle", "computer", "diamond", "elephant", "fountain", "guitar", "helicopter", "island", "jigsaw", "keyboard", "lantern", "microscope", "necklace", "ostrich", "penguin", "quicksand", "rocket", "sandwich", "telescope", "unicorn", "vegetable", "waterfall", "xylitol", "yellow", "zebra", "astronaut", "butterfly", "chocolate", "dinosaur", "escalator", "firefly", "galaxy", "hamburger", "instrument", "jackal", "kangaroo", "labyrinth", "magazine", "nightingale", "oxygen", "pyramid", "quadrilateral", "rhombus", "supermarket", "television", "university", "vacation", "waffle", "xmas", "yogurt", "zookeeper"
+        ];
+
+        // Hardcoded hints for some words
+        const wordHints = {
+            "apple": "A common round fruit with red or green skin and a crisp flesh.",
+            "banana": "A long curved fruit which grows in clusters and has a soft pulpy flesh and yellow skin when ripe.",
+            "orange": "A round, sweet, juicy citrus fruit with a tough, reddish-yellow rind.",
+            "strawberry": "A sweet soft red fruit with a seed-studded surface.",
+            "grape": "A berry, typically green, purple, or black, growing in clusters on a vine, eaten as fruit or used in making wine.",
+            "watermelon": "A large, round or oval fruit with a hard green rind, sweet, juicy, usually red flesh, and black seeds.",
+            "pineapple": "A large juicy tropical fruit consisting of an edible multiple fruit developed from a compact spike of flowers and individual berries, and a fibrous, spiky rind.",
+            "mango": "A fleshy, oval, yellowish-red tropical fruit with a large, flat seed inside.",
+            "kiwi": "A small fruit with a furry brown skin, green flesh, and tiny black seeds.",
+            "blueberry": "A small, sweet, dark blue or purple berry.",
+            "raspberry": "An edible soft fruit related to the blackberry, consisting of a cluster of reddish-pink drupelets.",
+            "blackberry": "An edible soft fruit, a species of Rubus in the rose family, consisting of a cluster of small, dark, juicy fruits.",
+            "peach": "A round stone fruit with juicy yellow flesh and downy skin.",
+            "pear": "A sweet, juicy fruit that is narrow at the stem and wider at the base.",
+            "plum": "An oval fleshy fruit which is purple, reddish, or yellow when ripe and contains a flattish pointed stone.",
+            "lemon": "A yellow, oval citrus fruit with thick skin and fragrant, acidic juice.",
+            "lime": "A green, oval citrus fruit with juicy, acidic pulp.",
+            "coconut": "The large, oval, brown seed of a tropical palm, consisting of a hard shell lined with edible white flesh and containing a clear liquid.",
+            "avocado": "A pear-shaped fruit with a large stone and greenish-black or purple skin.",
+            "apricot": "A juicy, soft fruit, resembling a small peach, of an orange-yellow color.",
+            "cherry": "A small, round stone fruit that is typically bright or dark red.",
+            "pomegranate": "A round fruit with a tough, reddish skin and many seeds surrounded by juicy red pulp.",
+            "fig": "A soft, sweet fruit that is full of tiny seeds, eaten fresh or dried.",
+            "guava": "A round or oval tropical fruit with a sweet, musky taste and a strong, pleasant aroma.",
+            "lychee": "A small, round, white-fleshed fruit with a reddish, leathery skin.",
+            "papaya": "A tropical fruit shaped like an elongated melon, with sweet orange flesh and small black seeds.",
+            "dragonfruit": "A tropical fruit with bright pink or yellow skin and white or red flesh with tiny black seeds.",
+            "passionfruit": "The fruit of a passionflower, having a tough outer rind and juicy, seed-filled center.",
+            "tangerine": "A small citrus fruit with a loose skin, related to the mandarin orange.",
+            "cranberry": "A small, sour, red berry, typically used in sauces or juices.",
+            "airplane": "A powered flying vehicle with fixed wings and a jet engine or propeller.",
+            "bicycle": "A vehicle composed of two wheels held in a frame, one behind the other, propelled by pedals.",
+            "computer": "An electronic device for storing and processing data, typically in binary form, according to instructions given to it in a variable program.",
+            "diamond": "A precious stone consisting of a colorless crystalline form of pure carbon, the hardest known mineral.",
+            "elephant": "A very large plant-eating mammal with a prehensile trunk, long curved tusks, and large ears.",
+            "fountain": "An ornamental structure in a garden or square from which one or more jets of water are pumped into the air.",
+            "guitar": "A stringed musical instrument, typically with six strings, played by plucking or strumming with the fingers or a plectrum.",
+            "helicopter": "A type of aircraft that derives both lift and propulsion from horizontally revolving overhead rotors.",
+            "island": "A piece of land surrounded by water.",
+            "jigsaw": "A puzzle consisting of a picture printed on cardboard or wood and cut into many irregularly shaped interlocking pieces.",
+            "keyboard": "A set of keys on a piano, organ, computer, etc.",
+            "lantern": "A lamp with a transparent case protecting the flame or electric bulb, typically having a handle and often a hook for hanging.",
+            "microscope": "An optical instrument used for viewing very small objects, such as mineral samples or animal or plant cells, typically magnified several hundred times.",
+            "necklace": "An ornamental chain or string of beads, jewels, or links worn around the neck.",
+            "ostrich": "A large flightless bird of Africa, the largest living bird, noted for its long neck and legs and its speed.",
+            "penguin": "A large flightless seabird of the southern hemisphere, with black and white plumage and an upright waddling gait.",
+            "quicksand": "A bed of loose sand saturated with water, which yields easily to pressure and tends to suck down any object resting on or falling into it.",
+            "rocket": "A cylindrical projectile that can be propelled to a great height or distance by the rapid escape of gases from the rear and can be used to impart thrust to a missile, spacecraft, or other vehicle.",
+            "sandwich": "An item of food consisting of two pieces of bread with meat, cheese, or other filling between them, eaten as a light meal.",
+            "telescope": "An optical instrument designed to make distant objects appear nearer, containing an arrangement of lenses or of curved mirrors and lenses, by which rays of light are collected and focused in a way that forms a magnified image.",
+            "unicorn": "A mythical animal typically represented as a horse with a single straight horn projecting from its forehead.",
+            "vegetable": "A plant or part of a plant used as food, typically as accompaniment to meat or fish, such as a cabbage, potato, carrot, or bean.",
+            "waterfall": "A cascade of water falling from a height, formed when a river or stream flows over a precipice or steep incline.",
+            "xylitol": "A sugar alcohol used as a sweetener, found in many fruits and vegetables.",
+            "yellow": "A color like that of lemons or butter, or of gold, often associated with sunshine.",
+            "zebra": "An African wild horse with black-and-white stripes and an erect mane.",
+            "astronaut": "A person who is trained to travel in a spacecraft.",
+            "butterfly": "An insect with large, often brightly colored wings.",
+            "chocolate": "A food preparation in the form of a paste or solid block, made from roasted and ground cacao seeds.",
+            "dinosaur": "A fossil reptile of the Mesozoic era, often of enormous size.",
+            "escalator": "A moving staircase consisting of a circulating belt of steps driven by a motor, for carrying passengers up or down between floors of a building.",
+            "firefly": "A soft-bodied beetle that produces bioluminescence.",
+            "galaxy": "A system of millions or billions of stars, together with gas and dust, held together by gravitational attraction.",
+            "hamburger": "A flat round cake of minced beef, fried or grilled and typically served in a bun with various condiments.",
+            "instrument": "A tool or implement, especially one for delicate or scientific work.",
+            "jackal": "A wild dog of Asia and Africa that hunts in packs.",
+            "kangaroo": "A large plant-eating marsupial with powerful hind legs for leaping, a long heavy tail, and a pouch in which it carries its young.",
+            "labyrinth": "A complicated irregular network of passages or paths in which it is difficult to find one's way; a maze.",
+            "magazine": "A periodical publication containing articles and illustrations, often on a particular subject or aimed at a particular readership.",
+            "nightingale": "A small European thrush noted for its rich, melodious nocturnal song.",
+            "oxygen": "A colorless, odorless reactive gas, the chemical element of atomic number 8 and the life-supporting component of the air.",
+            "pyramid": "A monumental structure with a square or triangular base and sloping sides meeting at a point, especially one built of stone as a royal tomb in ancient Egypt.",
+            "quadrilateral": "A four-sided figure.",
+            "rhombus": "A parallelogram with all four sides equal in length.",
+            "supermarket": "A large self-service shop selling foods and household goods.",
+            "television": "An electronic system of transmitting transient images of fixed or moving objects with accompanying sound over a wire or through space by apparatus that converts light and sound into electrical waves and converts these into visible light rays and audible waves.",
+            "university": "An institution of higher education offering tuition in a wide range of subjects and typically awarding degrees.",
+            "vacation": "An extended period of recreation, especially one spent away from home or in traveling.",
+            "waffle": "A crisp, often sweet, cake made from batter cooked in a waffle iron and eaten hot with butter and syrup.",
+            "xmas": "Christmas.",
+            "yogurt": "A semi-solid sourish food prepared from milk fermented by added bacteria.",
+            "zookeeper": "A person who manages or works in a zoo."
+        };
+
+        let secretWord; // The word to be guessed
+        let inputElements = []; // Array to store references to the input DOM elements
+        let coins = 0; // Player's coin count
+        let revealedLettersCount = 0; // Count of correctly revealed letters (initial + user guesses + hints)
+        let maxTries = 0; // Maximum number of incorrect guesses allowed
+        let currentTries = 0; // Current number of incorrect guesses
+
+        const wordDisplay = document.getElementById('word-display');
+        const messageDisplay = document.getElementById('message');
+        const coinsDisplay = document.getElementById('coins-display');
+        const triesDisplay = document.getElementById('tries-display');
+        const newGameButton = document.getElementById('new-game-button');
+        const checkGuessButton = document.getElementById('check-guess-button');
+        const hintButton = document.getElementById('hint-button');
+
+        /**
+         * Updates the coins and tries displays and enables/disables the hint button.
+         */
+        function updateGameStatsDisplay() {
+            coinsDisplay.textContent = `🪙 ${coins}`;
+            triesDisplay.textContent = `Tries Left: ${maxTries - currentTries}`;
+            hintButton.disabled = coins < 2 || revealedLettersCount === secretWord.length; // Disable hint if word is complete
+        }
+
+        /**
+         * Saves the current game state to localStorage.
+         */
+        function saveGameState() {
+            const gameState = {
+                secretWord: secretWord,
+                coins: coins,
+                currentTries: currentTries,
+                revealedLettersCount: revealedLettersCount,
+                inputStates: inputElements.map(input => ({
+                    value: input.value,
+                    disabled: input.disabled,
+                    isCorrect: input.classList.contains('correct'),
+                    isHintRevealed: input.classList.contains('hint-revealed')
+                }))
+            };
+            localStorage.setItem('wordGameSavedState', JSON.stringify(gameState));
+            console.log("Game state saved to localStorage.");
+        }
+
+        /**
+         * Loads the game state from localStorage.
+         * Returns true if a valid state was loaded, false otherwise.
+         */
+        function loadGameState() {
+            const savedState = localStorage.getItem('wordGameSavedState');
+            if (savedState) {
+                try {
+                    const gameState = JSON.parse(savedState);
+
+                    if (gameState && gameState.secretWord && Array.isArray(gameState.inputStates)) {
+                        secretWord = gameState.secretWord;
+                        coins = gameState.coins;
+                        currentTries = gameState.currentTries;
+                        revealedLettersCount = gameState.revealedLettersCount;
+                        maxTries = secretWord.length; // Max tries depends on the loaded word length
+
+                        wordDisplay.innerHTML = ''; // Clear existing inputs
+                        inputElements = []; // Clear previous input references
+
+                        gameState.inputStates.forEach((state, i) => {
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.maxLength = 1;
+                            input.classList.add('letter-input');
+                            input.dataset.index = i;
+
+                            input.value = state.value;
+                            input.disabled = state.disabled;
+
+                            if (state.isCorrect) input.classList.add('correct');
+                            if (state.isHintRevealed) input.classList.add('hint-revealed');
+
+                            if (!state.disabled) {
+                                input.addEventListener('input', handleInput);
+                                input.addEventListener('keydown', handleKeyDown);
+                                input.placeholder = '_';
+                            }
+                            wordDisplay.appendChild(input);
+                            inputElements.push(input);
+                        });
+
+                        // Display hint for the loaded word
+                        const hintText = wordHints[secretWord];
+                        if (hintText) {
+                            messageDisplay.textContent = `Hint: ${hintText}`;
+                            messageDisplay.classList.add('hint-message');
+                            messageDisplay.style.color = '';
+                        } else {
+                            messageDisplay.textContent = "No specific hint available for this word. Good luck!";
+                            messageDisplay.style.color = '#fa2a1b';
+                        }
+
+                        updateGameStatsDisplay();
+                        // Enable buttons for a new game
+                        checkGuessButton.disabled = false;
+                        hintButton.disabled = coins < 2 || revealedLettersCount === secretWord.length;
+                        newGameButton.disabled = false;
+                        focusNextAvailableInput(0); // Set focus after loading
+                        console.log("Game state loaded from localStorage.");
+                        return true;
+                    }
+                } catch (e) {
+                    console.error("Error parsing saved game state from localStorage:", e);
+                    localStorage.removeItem('wordGameSavedState'); // Clear corrupted state
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Resets the game board with a new random word, clears inputs, and sets initial tries.
+         * Does NOT affect the coin count.
+         */
+        function resetGameBoard() {
+            secretWord = arr[Math.floor(Math.random() * arr.length)].toLowerCase();
+            inputElements = [];
+            revealedLettersCount = 0;
+            maxTries = secretWord.length;
+            currentTries = 0;
+
+            wordDisplay.innerHTML = '';
+            messageDisplay.classList.remove('won-message', 'lose-message');
+            // updateGameStatsDisplay() will be called after this function by the caller
+
+            const numToReveal = Math.floor(secretWord.length / 3);
+            const revealedIndices = new Set();
+
+            while (revealedIndices.size < numToReveal) {
+                const randIndex = Math.floor(Math.random() * secretWord.length);
+                if (!revealedIndices.has(randIndex)) {
+                    revealedIndices.add(randIndex);
+                    revealedLettersCount++;
+                }
+            }
+
+            for (let i = 0; i < secretWord.length; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.maxLength = 1;
+                input.classList.add('letter-input');
+                input.dataset.index = i;
+
+                if (revealedIndices.has(i)) {
+                    input.value = secretWord[i];
+                    input.disabled = true;
+                } else {
+                    input.addEventListener('input', handleInput);
+                    input.addEventListener('keydown', handleKeyDown);
+                    input.placeholder = '_';
+                }
+                wordDisplay.appendChild(input);
+                inputElements.push(input);
+            }
+
+            const hintText = wordHints[secretWord];
+            if (hintText) {
+                messageDisplay.textContent = `Hint: ${hintText}`;
+                messageDisplay.classList.add('hint-message');
+                messageDisplay.style.color = '';
+            } else {
+                messageDisplay.textContent = "No specific hint available for this word. Good luck!";
+                messageDisplay.style.color = '#fa2a1b';
+            }
+
+            checkGuessButton.disabled = false;
+            hintButton.disabled = coins < 2 || revealedLettersCount === secretWord.length;
+            newGameButton.disabled = false;
+            focusNextAvailableInput(0);
+            console.log("Game board reset with new word.");
+        }
+
+        /**
+         * Manages game initialization: loads saved state or starts a new game.
+         */
+        function loadOrCreateGame() {
+            if (!loadGameState()) { // Attempt to load a saved game
+                coins = 2; // If no saved state, initialize coins to 2 for a fresh start
+                resetGameBoard(); // Set up a new game board
+                saveGameState(); // Save this initial new game state
+                console.log("No saved state found or corrupted. Starting a new game.");
+            }
+            // If loadGameState() returned true, it already set up the game and coins.
+            updateGameStatsDisplay(); // Ensure display is updated after load or new game
+        }
+
+
+        /**
+         * Handles input events for letter fields.
+         * Only moves focus, does not clear messages.
+         * @param {Event} event - The input event.
+         */
+        function handleInput(event) {
+            const input = event.target;
+            const index = parseInt(input.dataset.index);
+            const char = input.value.toLowerCase();
+
+            if (char.length === 0) {
+                return;
+            }
+
+            if (char.length > 1) {
+                input.value = char[0];
+                return;
+            }
+
+            focusNextAvailableInput(index + 1);
+        }
+
+        /**
+         * Handles keydown events for letter fields, primarily for backspace and navigation.
+         * Only moves focus, does not clear messages.
+         * @param {Event}  event - The keydown event.
+         */
+        function handleKeyDown(event) {
+            const input = event.target;
+            const index = parseInt(input.dataset.index);
+
+            if (event.key === 'Backspace') {
+                event.preventDefault();
+
+                if (input.value === '') {
+                    let targetIndex = index - 1;
+                    while (targetIndex >= 0 && inputElements[targetIndex].disabled) {
+                        targetIndex--;
+                    }
+
+                    if (targetIndex >= 0) {
+                        const prevEditableInput = inputElements[targetIndex];
+                        prevEditableInput.value = '';
+                        prevEditableInput.focus();
+                    }
+                } else {
+                    input.value = '';
+                }
+            } else if (event.key === 'ArrowRight') {
+                focusNextAvailableInput(index + 1);
+                event.preventDefault();
+            } else if (event.key === 'ArrowLeft') {
+                focusPreviousAvailableInput(index - 1);
+                event.preventDefault();
+            } else if (input.value.length >= 1 && !event.ctrlKey && !event.metaKey) {
+                if (!/^[a-z]$/i.test(event.key)) {
+                    event.preventDefault();
+                } else {
+                    event.preventDefault();
+                    input.value = event.key;
+                }
+            } else if (!/^[a-z]$/i.test(event.key) && event.key.length === 1) {
+                event.preventDefault();
+            }
+        }
+
+        /**
+         * Moves focus to the next available (not disabled) input field starting from a given index.
+         * @param {number} startIndex - The index to start searching from.
+         */
+        function focusNextAvailableInput(startIndex) {
+            for (let i = startIndex; i < inputElements.length; i++) {
+                if (!inputElements[i].disabled) {
+                    inputElements[i].focus();
+                    return;
+                }
+            }
+            for (let i = 0; i < inputElements.length; i++) {
+                if (!inputElements[i].disabled) {
+                    inputElements[i].focus();
+                    return;
+                }
+            }
+        }
+
+        /**
+         * Moves focus to the previous available (not disabled) input field starting from a given index.
+         * @param {number} startIndex - The index to start searching backwards from.
+         */
+        function focusPreviousAvailableInput(startIndex) {
+            for (let i = startIndex; i >= 0; i--) {
+                if (!inputElements[i].disabled) {
+                    inputElements[i].focus();
+                    return;
+                }
+            }
+            for (let i = inputElements.length - 1; i >= 0; i--) {
+                if (!inputElements[i].disabled) {
+                    inputElements[i].focus();
+                    return;
+                }
+            }
+        }
+
+        /**
+         * Checks the user's current guesses against the secret word.
+         * Awards coins for correct guesses and clears incorrect ones.
+         */
+        function checkUserGuess() {
+            let correctGuessesMadeThisCheck = 0;
+            let incorrectGuessMadeThisCheck = false;
+            // Do NOT clear messageDisplay here to keep hint visible
+
+            inputElements.forEach((input, index) => {
+                if (!input.disabled) {
+                    const char = input.value.toLowerCase();
+                    if (char === secretWord[index]) {
+                        input.classList.add('correct');
+                        input.disabled = true;
+                        coins++;
+                        revealedLettersCount++;
+                        correctGuessesMadeThisCheck++;
+                    } else if (char !== '') {
+                        input.value = '';
+                        incorrectGuessMadeThisCheck = true;
+                    }
+                }
+            });
+
+            if (incorrectGuessMadeThisCheck) {
+                currentTries++;
+            }
+            // Removed other messages, only win/lose will override hint
+            updateGameStatsDisplay();
+            saveGameState(); // Save game state after update
+            checkWinOrLoseCondition();
+        }
+
+        /**
+         * Reveals one random unguessed letter if the player has enough coins.
+         */
+        function giveHint() {
+            if (coins >= 2) {
+                coins -= 2;
+                updateGameStatsDisplay();
+
+                const unguessedIndices = [];
+                inputElements.forEach((input, index) => {
+                    if (!input.disabled) {
+                        unguessedIndices.push(index);
+                    }
+                });
+
+                if (unguessedIndices.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * unguessedIndices.length);
+                    const hintIndex = unguessedIndices[randomIndex];
+                    const hintInput = inputElements[hintIndex];
+
+                    hintInput.value = secretWord[hintIndex];
+                    hintInput.classList.add('correct', 'hint-revealed');
+                    hintInput.disabled = true;
+                    revealedLettersCount++;
+                    checkWinOrLoseCondition();
+                }
+                saveGameState(); // Save game state after hint
+            }
+        }
+
+        /**
+         * Checks if the game is won or lost.
+         */
+        function checkWinOrLoseCondition() {
+            if (revealedLettersCount === secretWord.length) {
+                messageDisplay.textContent = `You won! The word was "${secretWord.toUpperCase()}"`;
+                messageDisplay.classList.add('won-message');
+                messageDisplay.classList.remove('hint-message'); // Remove hint class for win/lose
+                endGame();
+                setTimeout(resetGameBoard, 3000); // Start a new game after 3 seconds, keeping coins
+            } else if (currentTries >= maxTries) {
+                messageDisplay.textContent = `You lost! The word was "${secretWord.toUpperCase()}"`;
+                messageDisplay.classList.add('lose-message');
+                messageDisplay.classList.remove('hint-message'); // Remove hint class for win/lose
+                endGame();
+                setTimeout(resetGameBoard, 3000); // Start a new game after 3 seconds, keeping coins
+            }
+        }
+
+        /**
+         * Disables all inputs and buttons at the end of a game.
+         * Does NOT clear saved state anymore, allowing coins to persist.
+         */
+        function endGame() {
+            inputElements.forEach(input => input.disabled = true);
+            checkGuessButton.disabled = true;
+            hintButton.disabled = true;
+            // Removed: localStorage.removeItem('wordGameSavedState'); // This line caused coins to reset
+            console.log("Game ended. State not cleared, coins should persist.");
+        }
+
+        // Event listeners for buttons
+        newGameButton.addEventListener('click', () => {
+            if (coins >= 1) {
+                coins -= 1; // Deduct 1 coin for starting a new game
+                resetGameBoard(); // Set up a new game board
+                saveGameState(); // Save the new state with deducted coin
+            }
+            updateGameStatsDisplay(); // Update display immediately after button click
+        });
+        checkGuessButton.addEventListener('click', checkUserGuess);
+        hintButton.addEventListener('click', giveHint);
+
+        // Start the game when the page loads
+        window.onload = loadOrCreateGame; // Call the main initialization function
+    </script>
+</body>
+</html>
